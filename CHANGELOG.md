@@ -1,3 +1,6 @@
+## 3.2.1
+  - Support for non-AWS endpoints
+
 ## 3.2.0
   - Move to the new concurrency model `:single`
   - use correct license identifier #99

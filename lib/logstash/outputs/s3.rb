@@ -8,6 +8,7 @@ require "socket" # for Socket.gethostname
 require "thread"
 require "tmpdir"
 require "fileutils"
+require "uri"
 
 
 # INFORMATION:
@@ -59,9 +60,10 @@ require "fileutils"
 # This is an example of logstash config:
 # [source,ruby]
 # output {
-#    s3{
+#    s3 {
 #      access_key_id => "crazy_key"             (required)
 #      secret_access_key => "monkey_access_key" (required)
+#      endpoint => "http://127.0.0.1:8080"      (optional, used for non-AWS endpoints, default = "")
 #      region => "eu-west-1"                    (optional, default = "us-east-1")
 #      bucket => "boss_please_open_your_bucket" (required)
 #      size_file => 2048                        (optional) - Bytes
@@ -83,6 +85,9 @@ class LogStash::Outputs::S3 < LogStash::Outputs::Base
 
   # S3 bucket
   config :bucket, :validate => :string
+
+  # endpoint
+  config :endpoint, :validate => :string
 
   # Set the size of file in bytes, this means that files on bucket when have dimension > file_size, they are stored in two or more file.
   # If you have tags then it will generate a specific size file for every tags
@@ -147,11 +152,26 @@ class LogStash::Outputs::S3 < LogStash::Outputs::Base
 
   def full_options
     aws_options_hash.merge(signature_options)
+    aws_options_hash.merge(endpoint_options)
   end
 
   def signature_options
     if @signature_version
       {:s3_signature_version => @signature_version}
+    else
+      {}
+    end
+  end
+
+  def endpoint_options
+    if @endpoint
+      uri = URI(@endpoint)
+      {
+        :s3_force_path_style => true,
+        :s3_endpoint => uri.host,
+        :s3_port => uri.port,
+        :use_ssl => uri.scheme == "https",
+      }
     else
       {}
     end
